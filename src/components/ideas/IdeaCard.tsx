@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion';
-import { MoreHorizontal, Lightbulb, Clock, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MoreHorizontal, Lightbulb, Clock, Sparkles, ChevronDown, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AiSuggestionsPanel } from './AiSuggestionsPanel';
+import { useAiSuggestions } from '@/hooks/useAiSuggestions';
 import type { Idea, IdeaColor } from '@/types/idea';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -72,9 +75,22 @@ const colorStyles: Record<IdeaColor, { gradient: string; border: string; shadow:
 };
 
 export function IdeaCard({ idea, onClick, onDelete, onArchive }: IdeaCardProps) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const { groupedSuggestions, isLoading: suggestionsLoading, generateSuggestions, acceptSuggestion, dismissSuggestion } = useAiSuggestions(idea.id);
+  
   const styles = colorStyles[idea.color as IdeaColor] || colorStyles.purple;
   const timeAgo = formatDistanceToNow(new Date(idea.updated_at), { addSuffix: true });
-
+  
+  const hasSuggestions = 
+    groupedSuggestions.refinements.length > 0 ||
+    groupedSuggestions.whatIfs.length > 0 ||
+    groupedSuggestions.nextSteps.length > 0;
+  
+  const pendingSuggestions = [
+    ...groupedSuggestions.refinements,
+    ...groupedSuggestions.whatIfs,
+    ...groupedSuggestions.nextSteps,
+  ].filter(s => s.is_accepted === null).length;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -137,9 +153,9 @@ export function IdeaCard({ idea, onClick, onDelete, onArchive }: IdeaCardProps) 
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0">
+        <CardContent className="pt-0 space-y-3">
           {idea.content && (
-            <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
+            <p className="text-sm text-muted-foreground line-clamp-3">
               {idea.content}
             </p>
           )}
@@ -149,13 +165,57 @@ export function IdeaCard({ idea, onClick, onDelete, onArchive }: IdeaCardProps) 
               <Clock className="h-3 w-3" />
               <span>{timeAgo}</span>
             </div>
-            {idea.priority === 'high' && (
-              <Badge variant="outline" className="text-xs px-1.5 py-0 border-orange-300 text-orange-600 dark:border-orange-700 dark:text-orange-400">
-                <Sparkles className="h-3 w-3 mr-1" />
-                Priority
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {idea.priority === 'high' && (
+                <Badge variant="outline" className="text-xs px-1.5 py-0 border-orange-300 text-orange-600 dark:border-orange-700 dark:text-orange-400">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Priority
+                </Badge>
+              )}
+              {(hasSuggestions || suggestionsLoading) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSuggestions(!showSuggestions);
+                  }}
+                >
+                  {suggestionsLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <>
+                      <Sparkles className="h-3 w-3 text-primary" />
+                      {pendingSuggestions > 0 && (
+                        <span className="text-primary font-medium">{pendingSuggestions}</span>
+                      )}
+                      <ChevronDown className={`h-3 w-3 transition-transform ${showSuggestions ? 'rotate-180' : ''}`} />
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
+
+          {/* AI Suggestions Panel */}
+          <AnimatePresence>
+            {showSuggestions && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <AiSuggestionsPanel
+                  groupedSuggestions={groupedSuggestions}
+                  isLoading={suggestionsLoading}
+                  onAccept={(id) => acceptSuggestion.mutate(id)}
+                  onDismiss={(id) => dismissSuggestion.mutate(id)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </CardContent>
       </Card>
     </motion.div>
