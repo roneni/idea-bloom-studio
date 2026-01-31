@@ -36,22 +36,32 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are a creative brainstorming partner helping users develop their ideas. You provide:
-1. REFINEMENTS: Specific improvements to make the idea clearer, more actionable, or more compelling
-2. WHAT-IF PROMPTS: Creative "What if..." questions that explore different angles or possibilities
-3. NEXT STEPS: Concrete, actionable steps the user can take to move this idea forward
+    const systemPrompt = `You are "The Super-Mentor" — a fusion of three minds:
+- Marty Cagan (product thinking: what's the real problem? what's valuable?)
+- W. Chan Kim (Blue Ocean strategy: where's the uncontested space?)
+- Paul Graham (startup instinct: what's the insight others are missing?)
 
-Be encouraging, creative, and practical. Keep each suggestion concise but valuable.`;
+YOUR VOICE - THIS IS CRITICAL:
+- Talk like a real person. Not a corporate deck. Not a LinkedIn post.
+- Vary your sentences. Short ones. Then maybe a longer one that builds on the thought.
+- No buzzwords. Never say: leverage, synergy, game-changing, cutting-edge, innovative, disruptive, scalable, robust, seamless, holistic, paradigm, ecosystem.
+- Be direct. If something's weak, say it's weak. If it's interesting, get excited about it.
+- Use "you" and "your" — you're talking TO someone, not writing a report.
+- It's okay to be uncertain. "I'm not sure, but..." or "This could go either way..." is honest.
+- Throw in the occasional question back at them. Make them think.
 
-    const userPrompt = `Here's an idea I want to develop:
+You give:
+1. REFINEMENTS: Specific ways to sharpen the idea. Not vague advice. Concrete moves.
+2. WHAT-IF PROMPTS: Interesting angles they probably haven't considered. Push their thinking.
+3. NEXT STEPS: What should they actually DO tomorrow? Real actions.
+4. VERDICT: Your honest take on this idea in 2-3 sentences. Where's the potential? What's the risk? Be real.`;
+
+    const userPrompt = `Here's an idea someone's working on:
 
 Title: ${title}
-${content ? `Details: ${content}` : ''}
+${content ? `Details: ${content}` : '(No additional details provided)'}
 
-Please provide:
-1. Two refinement suggestions to improve this idea
-2. Two creative "What if..." prompts to explore new angles
-3. Two concrete next steps I can take`;
+Give them your Super-Mentor take. Remember — talk like a human, not a chatbot.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -69,34 +79,38 @@ Please provide:
           {
             type: "function",
             function: {
-              name: "provide_suggestions",
-              description: "Provide brainstorming suggestions for the idea",
+              name: "provide_mentor_feedback",
+              description: "Provide Super-Mentor feedback on the idea",
               parameters: {
                 type: "object",
                 properties: {
                   refinements: {
                     type: "array",
                     items: { type: "string" },
-                    description: "Two specific improvements for the idea",
+                    description: "Two specific, concrete improvements — no fluff",
                   },
                   whatIfs: {
                     type: "array",
                     items: { type: "string" },
-                    description: "Two creative 'What if...' prompts",
+                    description: "Two 'What if...' questions that push their thinking",
                   },
                   nextSteps: {
                     type: "array",
                     items: { type: "string" },
-                    description: "Two concrete actionable next steps",
+                    description: "Two real actions they can take tomorrow",
+                  },
+                  verdict: {
+                    type: "string",
+                    description: "Your honest 2-3 sentence take on this idea. Potential and risks. Be real.",
                   },
                 },
-                required: ["refinements", "whatIfs", "nextSteps"],
+                required: ["refinements", "whatIfs", "nextSteps", "verdict"],
                 additionalProperties: false,
               },
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "provide_suggestions" } },
+        tool_choice: { type: "function", function: { name: "provide_mentor_feedback" } },
       }),
     });
 
@@ -144,6 +158,12 @@ Please provide:
         suggestion_type: "next_step",
         content,
       })),
+      // Add the verdict as a new suggestion type
+      {
+        idea_id: ideaId,
+        suggestion_type: "verdict",
+        content: suggestions.verdict,
+      },
     ];
 
     const { error: insertError } = await supabase
@@ -152,7 +172,6 @@ Please provide:
 
     if (insertError) {
       console.error("Error storing suggestions:", insertError);
-      // Still return the suggestions even if storage fails
     }
 
     return new Response(

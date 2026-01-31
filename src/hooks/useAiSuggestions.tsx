@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 export interface AiSuggestion {
   id: string;
   idea_id: string;
-  suggestion_type: 'refinement' | 'what_if' | 'next_step';
+  suggestion_type: 'refinement' | 'what_if' | 'next_step' | 'verdict';
   content: string;
   is_accepted: boolean | null;
   created_at: string;
@@ -89,6 +89,7 @@ export function useAiSuggestions(ideaId?: string) {
     refinements: suggestions.filter(s => s.suggestion_type === 'refinement'),
     whatIfs: suggestions.filter(s => s.suggestion_type === 'what_if'),
     nextSteps: suggestions.filter(s => s.suggestion_type === 'next_step'),
+    verdicts: suggestions.filter(s => s.suggestion_type === 'verdict'),
   };
 
   return {
