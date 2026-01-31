@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Lightbulb, HelpCircle, ArrowRight, Check, X, Loader2 } from 'lucide-react';
+import { Sparkles, Lightbulb, HelpCircle, ArrowRight, Check, X, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { AiSuggestion } from '@/hooks/useAiSuggestions';
@@ -9,6 +9,7 @@ interface AiSuggestionsPanelProps {
     refinements: AiSuggestion[];
     whatIfs: AiSuggestion[];
     nextSteps: AiSuggestion[];
+    verdicts: AiSuggestion[];
   };
   isLoading?: boolean;
   onAccept?: (id: string) => void;
@@ -37,6 +38,13 @@ const suggestionConfig = {
     bg: 'bg-green-500/10',
     border: 'border-green-200 dark:border-green-800/50',
   },
+  verdict: {
+    icon: MessageSquare,
+    label: "Mentor's Verdict",
+    gradient: 'from-blue-500 to-cyan-500',
+    bg: 'bg-blue-500/10',
+    border: 'border-blue-200 dark:border-blue-800/50',
+  },
 };
 
 function SuggestionCard({
@@ -51,6 +59,7 @@ function SuggestionCard({
   const config = suggestionConfig[suggestion.suggestion_type];
   const Icon = config.icon;
   const isActedOn = suggestion.is_accepted !== null;
+  const isVerdict = suggestion.suggestion_type === 'verdict';
 
   return (
     <motion.div
@@ -61,6 +70,7 @@ function SuggestionCard({
         relative p-3 rounded-lg border
         ${config.bg} ${config.border}
         ${isActedOn ? 'opacity-50' : ''}
+        ${isVerdict ? 'ring-1 ring-blue-500/30' : ''}
       `}
     >
       <div className="flex items-start gap-3">
@@ -68,11 +78,11 @@ function SuggestionCard({
           <Icon className="h-3.5 w-3.5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-foreground leading-relaxed">
+          <p className={`text-sm text-foreground leading-relaxed ${isVerdict ? 'italic' : ''}`}>
             {suggestion.content}
           </p>
         </div>
-        {!isActedOn && (
+        {!isActedOn && !isVerdict && (
           <div className="flex items-center gap-1 shrink-0">
             <Button
               variant="ghost"
@@ -108,7 +118,7 @@ function SuggestionSection({
   onAccept,
   onDismiss,
 }: {
-  type: 'refinement' | 'what_if' | 'next_step';
+  type: 'refinement' | 'what_if' | 'next_step' | 'verdict';
   suggestions: AiSuggestion[];
   onAccept?: (id: string) => void;
   onDismiss?: (id: string) => void;
@@ -151,7 +161,8 @@ export function AiSuggestionsPanel({
   const hasSuggestions =
     groupedSuggestions.refinements.length > 0 ||
     groupedSuggestions.whatIfs.length > 0 ||
-    groupedSuggestions.nextSteps.length > 0;
+    groupedSuggestions.nextSteps.length > 0 ||
+    groupedSuggestions.verdicts.length > 0;
 
   if (isLoading) {
     return (
@@ -161,7 +172,7 @@ export function AiSuggestionsPanel({
         className="flex items-center justify-center gap-3 p-6 rounded-xl bg-gradient-to-br from-primary/5 to-purple-500/5 border border-primary/20"
       >
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        <span className="text-sm text-muted-foreground">AI is brainstorming ideas...</span>
+        <span className="text-sm text-muted-foreground">Super-Mentor is thinking...</span>
       </motion.div>
     );
   }
@@ -180,10 +191,17 @@ export function AiSuggestionsPanel({
         <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary to-purple-500">
           <Sparkles className="h-4 w-4 text-white" />
         </div>
-        <h3 className="font-semibold text-foreground">AI Suggestions</h3>
+        <h3 className="font-semibold text-foreground">Super-Mentor Feedback</h3>
       </div>
 
       <div className="space-y-4">
+        {/* Verdict first - it's the main take */}
+        <SuggestionSection
+          type="verdict"
+          suggestions={groupedSuggestions.verdicts}
+          onAccept={onAccept}
+          onDismiss={onDismiss}
+        />
         <SuggestionSection
           type="refinement"
           suggestions={groupedSuggestions.refinements}
