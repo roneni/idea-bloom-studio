@@ -31,7 +31,7 @@ export default function AuthPage() {
     }
 
     toast.success(isLogin ? 'Welcome back!' : 'Account created!');
-    navigate('/');
+    navigate('/dashboard');
     setIsLoading(false);
   };
 
