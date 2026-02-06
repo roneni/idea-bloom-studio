@@ -59,8 +59,7 @@ export default function Dashboard() {
   };
 
   const handleIdeaClick = (idea: Idea) => {
-    // TODO: Navigate to idea detail page
-    console.log('Open idea:', idea.id);
+    navigate(`/idea/${idea.id}`);
   };
 
   const handleIdeaDelete = (id: string) => {
